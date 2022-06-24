@@ -10,3 +10,4 @@ environment:
 
 dependencies:
   logging: '^1.0.1'
+  msgpack_dart: ^1.0.0

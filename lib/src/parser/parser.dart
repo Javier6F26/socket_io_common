@@ -11,11 +11,12 @@
  * Copyright (C) 2017 Potix Corporation. All Rights Reserved.
  */
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:logging/logging.dart';
 import 'package:socket_io_common/socket_io_common.dart';
 import 'package:socket_io_common/src/util/event_emitter.dart';
+import 'package:msgpack_dart/msgpack_dart.dart' as m2;
 
-import 'is_binary.dart';
 
 const int CONNECT = 0;
 const int DISCONNECT = 1;
@@ -54,20 +55,11 @@ class Encoder {
    * @api public
    */
 
-  encode(obj) {
-    if (_logger.isLoggable(Level.FINE)) {
-      _logger.fine('encoding packet $obj');
-    }
-
-    if (EVENT == obj['type'] || ACK == obj['type']) {
-      if (hasBinary(obj)) {
-        obj['type'] = obj['type'] == EVENT ? BINARY_EVENT : BINARY_ACK;
-        return encodeAsBinary(obj);
-      }
-    }
-    return [encodeAsString(obj)];
+  encode(obj, callback) {
+    _logger.fine('encoding packet $obj');
+    var enc = m2.serialize(obj);
+    callback([enc]);
   }
-
   /**
    * Encode packet as string.
    *
@@ -145,38 +137,20 @@ class Decoder extends EventEmitter {
    */
   add(obj) {
     var packet;
-    if (obj is String) {
-      packet = decodeString(obj);
-      if (BINARY_EVENT == packet['type'] || BINARY_ACK == packet['type']) {
-        // binary packet's json
-        this.reconstructor = new BinaryReconstructor(packet);
 
-        // no attachments, labeled binary but no binary data to follow
-        if (this.reconstructor.reconPack['attachments'] == 0) {
-          this.emit('decoded', packet);
-        }
-      } else {
-        // non-binary full packet
-        this.emit('decoded', packet);
-      }
-    } else if (isBinary(obj) || obj is Map && obj['base64'] != null) {
-      // raw binary data
-      if (this.reconstructor == null) {
-        throw new UnsupportedError(
-            'got binary data when not reconstructing a packet');
-      } else {
-        packet = this.reconstructor.takeBinaryData(obj);
-        if (packet != null) {
-          // received final buffer
-          this.reconstructor = null;
-          this.emit('decoded', packet);
-        }
-      }
+    // Parse type
+    if (obj is String) {
+      packet = <String, dynamic>{'type': num.parse(obj[8]), 'nsp': '/'};
+
+      this.emit('decoded', packet);
+    } else if (obj is Uint8List) {
+      packet = m2.deserialize(obj);
+
+      this.emit('decoded', packet);
     } else {
-      throw new UnsupportedError('Unknown type: ' + obj);
+      throw UnsupportedError("Parser add error");
     }
   }
-
   /**
    * Decode a packet String (JSON data)
    *
