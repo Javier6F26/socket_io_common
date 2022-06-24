@@ -49,7 +49,7 @@ class Encoder {
   encode(obj) {
     _logger.fine('encoding packet $obj');
     var enc = m2.serialize(obj);
-    return [enc];
+    return enc;
   }
 
   /**
