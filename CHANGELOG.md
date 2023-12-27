@@ -1,3 +1,18 @@
+## 2.0.3
+
+**Bug fix:**
+* [socket.io-client-dart#330](https://github.com/rikulo/socket.io-client-dart/issues/330) _Client throws error when buffer is received
+
+## 2.0.2
+
+**Bug fix:**
+* [socket_io_common#8](https://github.com/rikulo/socket_io_common/pull/8) _fixed RangeError
+
+## 2.0.1
+
+**Bug fix:**
+* [socket.io-client-dart#294](https://github.com/rikulo/socket.io-client-dart/issues/294) _reconstructPacket
+
 ## 2.0.0
 
 **Features:**
