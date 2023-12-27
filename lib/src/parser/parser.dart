@@ -11,11 +11,12 @@
  * Copyright (C) 2017 Potix Corporation. All Rights Reserved.
  */
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
+import 'package:msgpack_dart/msgpack_dart.dart' as m2;
 import 'package:socket_io_common/socket_io_common.dart';
 import 'package:socket_io_common/src/util/event_emitter.dart';
-import 'package:msgpack_dart/msgpack_dart.dart' as m2;
-import 'is_binary.dart';
 
 const int CONNECT = 0;
 const int DISCONNECT = 1;
@@ -31,15 +32,7 @@ const int BINARY_ACK = 6;
  * @api public
  */
 
-List<String?> PacketTypes = <String?>[
-  'CONNECT',
-  'DISCONNECT',
-  'EVENT',
-  'ACK',
-  'CONNECT_ERROR',
-  'BINARY_EVENT',
-  'BINARY_ACK'
-];
+List<String?> PacketTypes = <String?>['CONNECT', 'DISCONNECT', 'EVENT', 'ACK', 'CONNECT_ERROR', 'BINARY_EVENT', 'BINARY_ACK'];
 
 class Encoder {
   static final Logger _logger = new Logger('socket_io:parser.Encoder');
@@ -54,10 +47,10 @@ class Encoder {
    * @api public
    */
 
-  encode(obj, callback) {
+  encode(obj) {
     _logger.fine('encoding packet $obj');
     var enc = m2.serialize(obj);
-    callback([enc]);
+    return [enc];
   }
 
   /**
@@ -99,15 +92,15 @@ class Encoder {
     return str;
   }
 
-/**
- * Encode packet as 'buffer sequence' by removing blobs, and
- * deconstructing packet into object with placeholders and
- * a list of buffers.
- *
- * @param {Object} packet
- * @return {Buffer} encoded
- * @api private
- */
+  /**
+   * Encode packet as 'buffer sequence' by removing blobs, and
+   * deconstructing packet into object with placeholders and
+   * a list of buffers.
+   *
+   * @param {Object} packet
+   * @return {Buffer} encoded
+   * @api private
+   */
 
   static encodeAsBinary(obj) {
     final deconstruction = Binary.deconstructPacket(obj);
@@ -238,10 +231,7 @@ class Decoder extends EventEmitter {
       case DISCONNECT:
         return payload == null;
       case CONNECT_ERROR:
-        return payload is String ||
-            payload == null ||
-            payload is Map ||
-            payload is List;
+        return payload is String || payload == null || payload is Map || payload is List;
       case EVENT:
       case BINARY_EVENT:
         return payload is List && payload[0] is String;
@@ -251,11 +241,11 @@ class Decoder extends EventEmitter {
     }
   }
 
-/**
- * Deallocates a parser's resources
- *
- * @api public
- */
+  /**
+   * Deallocates a parser's resources
+   *
+   * @api public
+   */
 
   destroy() {
     if (this.reconstructor != null) {
@@ -276,6 +266,7 @@ class Decoder extends EventEmitter {
 class BinaryReconstructor {
   Map? reconPack;
   List buffers = [];
+
   BinaryReconstructor(packet) {
     this.reconPack = packet;
   }
@@ -293,8 +284,7 @@ class BinaryReconstructor {
     this.buffers.add(binData);
     if (this.buffers.length == this.reconPack!['attachments']) {
       // done with buffer list
-      var packet = Binary.reconstructPacket(
-          this.reconPack!, this.buffers);
+      var packet = Binary.reconstructPacket(this.reconPack!, this.buffers);
       this.finishedReconstruction();
       return packet;
     }
